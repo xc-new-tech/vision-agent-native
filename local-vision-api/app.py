@@ -11,6 +11,7 @@ import base64
 import io
 import json
 import os
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import numpy as np
@@ -48,6 +49,29 @@ def get_device():
 DEVICE = get_device()
 print(f"Using device: {DEVICE}")
 
+BASE_DIR = Path(__file__).resolve().parent
+MODEL_DIR = Path(os.environ.get("MODEL_DIR", str(BASE_DIR / "models"))).expanduser()
+
+
+def resolve_model_path(env_var: str, default_filename: str) -> str:
+    """解析模型权重路径。
+
+    优先级:
+    1) 环境变量显式指定
+    2) local-vision-api/models/<default_filename>
+    3) 仅文件名 (交给 Ultralytics 自动下载/查找)
+    """
+    env_value = os.environ.get(env_var)
+    if env_value:
+        return env_value
+
+    candidate = MODEL_DIR / default_filename
+    try:
+        MODEL_DIR.mkdir(parents=True, exist_ok=True)
+        return str(candidate)
+    except Exception:
+        return default_filename
+
 app = FastAPI(title="Local Vision API", version="1.0.0")
 
 app.add_middleware(
@@ -65,7 +89,7 @@ def get_yolo_model():
     if _yolo_model is None:
         from ultralytics import YOLO
 
-        model_path = os.environ.get("YOLO_MODEL_PATH", "yolov8x-worldv2.pt")
+        model_path = resolve_model_path("YOLO_MODEL_PATH", "yolov8x-worldv2.pt")
         print(f"Loading YOLO-World model: {model_path} on {DEVICE}")
         _yolo_model = YOLO(model_path)
         _yolo_model.to(DEVICE)
@@ -78,7 +102,7 @@ def get_sam_model():
     if _sam_model is None:
         from ultralytics import SAM
 
-        model_path = os.environ.get("SAM_MODEL_PATH", "sam2_l.pt")
+        model_path = resolve_model_path("SAM_MODEL_PATH", "sam2_l.pt")
         print(f"Loading SAM2 model: {model_path} on {DEVICE}")
         _sam_model = SAM(model_path)
         _sam_model.to(DEVICE)
@@ -91,8 +115,8 @@ def is_sam3_available() -> bool:
     if _sam3_available is not None:
         return _sam3_available
 
-    sam3_path = os.environ.get("SAM3_MODEL_PATH", "sam3.pt")
-    _sam3_available = os.path.exists(sam3_path)
+    sam3_path = resolve_model_path("SAM3_MODEL_PATH", "sam3.pt")
+    _sam3_available = Path(sam3_path).exists()
     if _sam3_available:
         print(f"SAM3 available: {sam3_path}")
     else:
@@ -110,7 +134,7 @@ def get_sam3_predictor():
         try:
             from ultralytics.models.sam import SAM3SemanticPredictor
 
-            sam3_path = os.environ.get("SAM3_MODEL_PATH", "sam3.pt")
+            sam3_path = resolve_model_path("SAM3_MODEL_PATH", "sam3.pt")
             print(f"Loading SAM3 model: {sam3_path} on {DEVICE}")
 
             # 设置设备
@@ -142,7 +166,7 @@ def get_yolo_pose_model():
     if _yolo_pose_model is None:
         from ultralytics import YOLO
 
-        model_path = os.environ.get("YOLO_POSE_PATH", "yolo11x-pose.pt")
+        model_path = resolve_model_path("YOLO_POSE_PATH", "yolo11x-pose.pt")
         print(f"Loading YOLO-Pose model: {model_path} on {DEVICE}")
         _yolo_pose_model = YOLO(model_path)
         _yolo_pose_model.to(DEVICE)
@@ -161,7 +185,7 @@ def get_yolo_cls_model():
     if _yolo_cls_model is None:
         from ultralytics import YOLO
 
-        model_path = os.environ.get("YOLO_CLS_PATH", "yolo11x-cls.pt")
+        model_path = resolve_model_path("YOLO_CLS_PATH", "yolo11x-cls.pt")
         print(f"Loading YOLO-Cls model: {model_path} on {DEVICE}")
         _yolo_cls_model = YOLO(model_path)
         _yolo_cls_model.to(DEVICE)
@@ -223,9 +247,9 @@ async def health_check():
 @app.get("/status")
 async def model_status():
     """查看模型加载状态"""
-    sam3_path = os.environ.get("SAM3_MODEL_PATH", "sam3.pt")
-    sam2_path = os.environ.get("SAM_MODEL_PATH", "sam2_l.pt")
-    yolo_path = os.environ.get("YOLO_MODEL_PATH", "yolov8x-worldv2.pt")
+    sam3_path = resolve_model_path("SAM3_MODEL_PATH", "sam3.pt")
+    sam2_path = resolve_model_path("SAM_MODEL_PATH", "sam2_l.pt")
+    yolo_path = resolve_model_path("YOLO_MODEL_PATH", "yolov8x-worldv2.pt")
 
     # 设备信息
     device_name = str(DEVICE)
@@ -239,19 +263,19 @@ async def model_status():
         "models": {
             "yolo_world": {
                 "path": yolo_path,
-                "available": os.path.exists(yolo_path),
+                "available": Path(yolo_path).exists(),
                 "loaded": _yolo_model is not None,
             },
             "sam2": {
                 "path": sam2_path,
-                "available": os.path.exists(sam2_path),
+                "available": Path(sam2_path).exists(),
                 "loaded": _sam_model is not None,
             },
             "sam3": {
                 "path": sam3_path,
-                "available": os.path.exists(sam3_path),
+                "available": Path(sam3_path).exists(),
                 "loaded": _sam3_predictor is not None,
-                "note": "原生文本概念分割" if os.path.exists(sam3_path) else "使用 YOLO+SAM2 回退",
+                "note": "原生文本概念分割" if Path(sam3_path).exists() else "使用 YOLO+SAM2 回退",
             },
         }
     }
