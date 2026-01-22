@@ -1,0 +1,18 @@
+# 本地视觉 API 依赖
+
+# Web 框架
+fastapi>=0.100.0
+uvicorn>=0.23.0
+python-multipart>=0.0.6
+
+# 图像处理
+pillow>=10.0.0
+numpy>=1.24.0
+
+# YOLO-World + SAM3 (通过 Ultralytics)
+# SAM3 已集成到 Ultralytics 8.3.237+
+ultralytics>=8.3.237
+
+# GPU 支持
+torch>=2.0.0
+torchvision>=0.15.0
