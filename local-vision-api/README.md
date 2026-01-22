@@ -14,20 +14,29 @@
 ### 1. 安装依赖
 
 ```bash
-cd examples/local-vision-api
+cd local-vision-api
 pip install -r requirements.txt
 ```
 
 ### 2. 模型下载
 
-模型会在首次运行时自动下载，或手动指定路径：
+模型权重**不随仓库提交**（见 `local-vision-api/.gitignore`），建议统一放到 `local-vision-api/models/`。
+
+YOLO-World / SAM2 / YOLO11 的权重在首次运行时通常会由 Ultralytics 自动下载；也可以手动下载（官方链接）：
+
+- YOLO-World: `https://github.com/ultralytics/assets/releases/latest/download/yolov8x-worldv2.pt`
+- SAM2-L: `https://github.com/ultralytics/assets/releases/latest/download/sam2_l.pt`
+- YOLO11x Pose: `https://github.com/ultralytics/assets/releases/latest/download/yolo11x-pose.pt`
+- YOLO11x Cls: `https://github.com/ultralytics/assets/releases/latest/download/yolo11x-cls.pt`
+
+SAM3 权重请按 Ultralytics 官方文档下载并放到 `local-vision-api/models/sam3.pt`（或用环境变量指定）。
 
 ```bash
 # YOLO-World
 export YOLO_MODEL_PATH="yolov8x-worldv2.pt"
 
 # SAM3
-export SAM3_MODEL_PATH="sam3_l.pt"
+export SAM3_MODEL_PATH="sam3.pt"
 ```
 
 ## 启动服务
